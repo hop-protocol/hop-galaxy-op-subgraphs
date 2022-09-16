@@ -1,0 +1,16 @@
+{
+  "name": "hop-galaxy-op",
+  "license": "UNLICENSED",
+  "scripts": {
+    "codegen": "graph codegen",
+    "build": "graph build",
+    "deploy": "graph deploy --node https://api.studio.thegraph.com/deploy/ hop-galaxy-op",
+    "create-local": "graph create --node http://localhost:8020/ hop-galaxy-op",
+    "remove-local": "graph remove --node http://localhost:8020/ hop-galaxy-op",
+    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 hop-galaxy-op"
+  },
+  "dependencies": {
+    "@graphprotocol/graph-cli": "0.29.0",
+    "@graphprotocol/graph-ts": "0.26.0"
+  }
+}
