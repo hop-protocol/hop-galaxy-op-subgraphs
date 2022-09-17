@@ -1,5 +1,7 @@
-type ExampleEntity @entity {
+type AccountEntity @entity {
   id: ID!
-  block: Bytes!
-  count: BigInt!
+  account: String!
+  totalBalance: BigInt!
+  lastUpdated: BigInt!
+  tokenDays: BigInt!
 }
