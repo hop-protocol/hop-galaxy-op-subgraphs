@@ -155,12 +155,12 @@ export function handleTransfer(event: Transfer): void {
       totalBalance = totalBalance.minus(tokenAmount)
     }
 
-    tokenDays = tokenDays.plus(blockTimestamp.minus(lastUpdated))
-    tokenDays = tokenDays.times(totalBalance)
+    tokenDays = tokenDays.plus((blockTimestamp.minus(lastUpdated)).times(totalBalance))
 
     entity.account = fromAddress.toHexString()
     entity.lastUpdated = blockTimestamp
     entity.totalBalance = totalBalance
+    entity.tokenDays = tokenDays
     entity.eventCount = entity.eventCount.plus(BigInt.fromI64(1)) // for debugging
 
     entity.save()
@@ -188,12 +188,12 @@ export function handleTransfer(event: Transfer): void {
       totalBalance = totalBalance.plus(tokenAmount)
     }
 
-    tokenDays = tokenDays.plus(blockTimestamp.minus(lastUpdated))
-    tokenDays = tokenDays.times(totalBalance)
+    tokenDays = tokenDays.plus((blockTimestamp.minus(lastUpdated)).times(totalBalance))
 
     entity.account = toAddress.toHexString()
     entity.lastUpdated = blockTimestamp
     entity.totalBalance = totalBalance
+    entity.tokenDays = tokenDays
     entity.eventCount = entity.eventCount.plus(BigInt.fromI64(1)) // for debugging
 
     entity.save()
