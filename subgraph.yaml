@@ -19,6 +19,8 @@ dataSources:
       abis:
         - name: ERC20
           file: ./abis/ERC20.json
+        - name: Swap
+          file: ./abis/Swap.json
       eventHandlers:
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer
@@ -41,6 +43,8 @@ dataSources:
       abis:
         - name: ERC20
           file: ./abis/ERC20.json
+        - name: Swap
+          file: ./abis/Swap.json
       eventHandlers:
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer
@@ -63,6 +67,8 @@ dataSources:
       abis:
         - name: ERC20
           file: ./abis/ERC20.json
+        - name: Swap
+          file: ./abis/Swap.json
       eventHandlers:
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer
@@ -85,6 +91,8 @@ dataSources:
       abis:
         - name: ERC20
           file: ./abis/ERC20.json
+        - name: Swap
+          file: ./abis/Swap.json
       eventHandlers:
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleTransfer

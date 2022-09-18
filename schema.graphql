@@ -1,4 +1,4 @@
-type AccountEntity @entity {
+type Account @entity {
   id: ID!
   account: String!
   totalBalance: BigInt!
