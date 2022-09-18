@@ -114,14 +114,18 @@ export function handleTransfer(event: Transfer): void {
   let tokenAmount = BigInt.fromI64(0)
   {
     const swapContract = Swap.bind(swapAddress)
-    const callResult = swapContract.try_calculateRemoveLiquidityOneToken(fromAddress, transferLpAmount, 0)
-    if (callResult.reverted) {
-      throw new Error('call reverted in handleTransfer')
-    }
-    const amountResult = callResult.value
+    if (transferLpAmount.gt(BigInt.fromI64(0))) {
+      const callResult = swapContract.try_calculateRemoveLiquidityOneToken(fromAddress, transferLpAmount, 0)
+      let amountResult = BigInt.fromI64(0)
+      if (callResult.reverted) {
+        // throw new Error('call reverted in handleTransfer')
+      } else {
+        amountResult = callResult.value
+      }
 
-    // convert to 18 decimals
-    tokenAmount = shiftBNDecimals(amountResult, 18 - tokenDecimals)
+      // convert to 18 decimals
+      tokenAmount = shiftBNDecimals(amountResult, 18 - tokenDecimals)
+    }
   }
 
   if (isEth) {
@@ -139,6 +143,8 @@ export function handleTransfer(event: Transfer): void {
 
       const initialBalance = getInitialBalance(fromAddress)
       entity.totalBalance = initialBalance
+      entity.lastUpdated = blockTimestamp
+      entity.tokenDays = BigInt.fromI64(0)
     }
 
     let totalBalance = entity.totalBalance
@@ -149,11 +155,13 @@ export function handleTransfer(event: Transfer): void {
       totalBalance = totalBalance.minus(tokenAmount)
     }
 
-    tokenDays = tokenDays.plus((blockTimestamp.minus(lastUpdated)).times(totalBalance))
+    tokenDays = tokenDays.plus(blockTimestamp.minus(lastUpdated))
+    tokenDays = tokenDays.times(totalBalance)
 
     entity.account = fromAddress.toHexString()
     entity.lastUpdated = blockTimestamp
     entity.totalBalance = totalBalance
+    entity.eventCount = entity.eventCount.plus(BigInt.fromI64(1)) // for debugging
 
     entity.save()
   }
@@ -168,6 +176,8 @@ export function handleTransfer(event: Transfer): void {
 
       const initialBalance = getInitialBalance(toAddress)
       entity.totalBalance = initialBalance
+      entity.lastUpdated = blockTimestamp
+      entity.tokenDays = BigInt.fromI64(0)
     }
 
     let totalBalance = entity.totalBalance
@@ -178,11 +188,13 @@ export function handleTransfer(event: Transfer): void {
       totalBalance = totalBalance.plus(tokenAmount)
     }
 
-    tokenDays = tokenDays.plus((blockTimestamp.minus(lastUpdated)).times(totalBalance))
+    tokenDays = tokenDays.plus(blockTimestamp.minus(lastUpdated))
+    tokenDays = tokenDays.times(totalBalance)
 
     entity.account = toAddress.toHexString()
     entity.lastUpdated = blockTimestamp
     entity.totalBalance = totalBalance
+    entity.eventCount = entity.eventCount.plus(BigInt.fromI64(1)) // for debugging
 
     entity.save()
   }

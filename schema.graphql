@@ -4,4 +4,5 @@ type Account @entity {
   totalBalance: BigInt!
   lastUpdated: BigInt!
   tokenDays: BigInt!
+  eventCount: BigInt!
 }
