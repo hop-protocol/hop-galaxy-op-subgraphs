@@ -1,8 +1,8 @@
 # hop-galaxy-op
 
-> WIP
+> The hop subgraph for Galaxy campaign on optimism that calculates how long an account has LP'd for.
 
-## Steps
+## Steps subgraph does
 
 on LP token transfer event
 1. get saddle swap contract for that token bridge
@@ -22,8 +22,31 @@ on LP token transfer event
 ```sh
 npm run codegen
 npm run build
+```
+
+## Deployment
+
+```sh
+npm run codegen
+npm run build
 graph auth --product hosted-service <access-token>
 graph deploy --product hosted-service hop-protocol/hop-galaxy-op
+```
+
+## GraphQL query example
+
+
+```gql
+{
+  accounts(first: 1000) {
+    id
+    account
+    totalBalance
+    tokenDays
+    completed
+    lastUpdated
+  }
+}
 ```
 
 ## Links
