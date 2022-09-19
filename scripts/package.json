@@ -1,0 +1,16 @@
+{
+  "name": "scripts",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@hop-protocol/core": "^0.0.1-beta.86",
+    "ethers": "^5.7.1",
+    "isomorphic-fetch": "^3.0.0"
+  }
+}
