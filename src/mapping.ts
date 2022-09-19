@@ -3,6 +3,9 @@ import { ERC20, Transfer } from "../generated/ERC20/ERC20"
 import { Swap } from "../generated/Swap/Swap"
 import { Account } from "../generated/schema"
 
+const STABLE_TOKEN_DAYS = 36500
+const ETH_TOKEN_DAYS = 24
+
 export function shiftBNDecimals (bn: BigInt, shiftAmount: number): BigInt {
   if (shiftAmount < 0) throw new Error('shiftAmount must be positive')
   return bn.times(BigInt.fromI64(10).pow(shiftAmount as u8))
@@ -84,7 +87,7 @@ export function getNormalizedLpBalance(lpTokenAddress: string, account: Address)
   }
 
   if (isEth) {
-   const rate = BigInt.fromI64(36500).div(BigInt.fromI64(24))
+   const rate = BigInt.fromI64(STABLE_TOKEN_DAYS).div(BigInt.fromI64(ETH_TOKEN_DAYS))
    tokenAmount = rate.times(tokenAmount)
   }
 
@@ -129,73 +132,80 @@ export function handleTransfer(event: Transfer): void {
   }
 
   if (isEth) {
-   const rate = BigInt.fromI64(36500).div(BigInt.fromI64(24))
+   const rate = BigInt.fromI64(STABLE_TOKEN_DAYS).div(BigInt.fromI64(ETH_TOKEN_DAYS))
    tokenAmount = rate.times(tokenAmount)
   }
 
+  const zeroAddress = Address.fromString('0x0000000000000000000000000000000000000000')
   {
-    const id = fromAddress.toHexString()
-    let entity = Account.load(id)
-    let isNew = false
-    if (entity == null) {
-      isNew = true
-      entity = new Account(id)
+    if (!fromAddress.equals(zeroAddress)) {
+      const id = fromAddress.toHexString()
+      let entity = Account.load(id)
+      let isNew = false
+      if (entity == null) {
+        isNew = true
+        entity = new Account(id)
 
-      const initialBalance = getInitialBalance(fromAddress)
-      entity.totalBalance = initialBalance
+        const initialBalance = getInitialBalance(fromAddress)
+        entity.totalBalance = initialBalance
+        entity.lastUpdated = blockTimestamp
+        entity.tokenDays = BigInt.fromI64(0)
+      }
+
+      let totalBalance = entity.totalBalance
+      let tokenDays = entity.tokenDays
+      let lastUpdated = entity.lastUpdated
+
+      if (!isNew) {
+        totalBalance = totalBalance.minus(tokenAmount)
+      }
+
+      tokenDays = tokenDays.plus((blockTimestamp.minus(lastUpdated)).times(totalBalance))
+
+      entity.account = fromAddress.toHexString()
       entity.lastUpdated = blockTimestamp
-      entity.tokenDays = BigInt.fromI64(0)
+      entity.totalBalance = totalBalance
+      entity.tokenDays = tokenDays
+      entity.completed = tokenDays.gt(BigInt.fromI64(STABLE_TOKEN_DAYS)) || tokenDays.equals(BigInt.fromI64(STABLE_TOKEN_DAYS))
+      entity._eventCount = entity._eventCount.plus(BigInt.fromI64(1)) // for debugging
+
+      entity.save()
     }
-
-    let totalBalance = entity.totalBalance
-    let tokenDays = entity.tokenDays
-    let lastUpdated = entity.lastUpdated
-
-    if (!isNew) {
-      totalBalance = totalBalance.minus(tokenAmount)
-    }
-
-    tokenDays = tokenDays.plus((blockTimestamp.minus(lastUpdated)).times(totalBalance))
-
-    entity.account = fromAddress.toHexString()
-    entity.lastUpdated = blockTimestamp
-    entity.totalBalance = totalBalance
-    entity.tokenDays = tokenDays
-    entity.eventCount = entity.eventCount.plus(BigInt.fromI64(1)) // for debugging
-
-    entity.save()
   }
 
   {
-    const id = toAddress.toHexString()
-    let entity = Account.load(id)
-    let isNew = false
-    if (entity == null) {
-      isNew = true
-      entity = new Account(id)
+    if (!toAddress.equals(zeroAddress)) {
+      const id = toAddress.toHexString()
+      let entity = Account.load(id)
+      let isNew = false
+      if (entity == null) {
+        isNew = true
+        entity = new Account(id)
 
-      const initialBalance = getInitialBalance(toAddress)
-      entity.totalBalance = initialBalance
+        const initialBalance = getInitialBalance(toAddress)
+        entity.totalBalance = initialBalance
+        entity.lastUpdated = blockTimestamp
+        entity.tokenDays = BigInt.fromI64(0)
+      }
+
+      let totalBalance = entity.totalBalance
+      let tokenDays = entity.tokenDays
+      let lastUpdated = entity.lastUpdated
+
+      if (!isNew) {
+        totalBalance = totalBalance.plus(tokenAmount)
+      }
+
+      tokenDays = tokenDays.plus((blockTimestamp.minus(lastUpdated)).times(totalBalance))
+
+      entity.account = toAddress.toHexString()
       entity.lastUpdated = blockTimestamp
-      entity.tokenDays = BigInt.fromI64(0)
+      entity.totalBalance = totalBalance
+      entity.tokenDays = tokenDays
+      entity.completed = tokenDays.gt(BigInt.fromI64(STABLE_TOKEN_DAYS)) || tokenDays.equals(BigInt.fromI64(STABLE_TOKEN_DAYS))
+      entity._eventCount = entity._eventCount.plus(BigInt.fromI64(1)) // for debugging
+
+      entity.save()
     }
-
-    let totalBalance = entity.totalBalance
-    let tokenDays = entity.tokenDays
-    let lastUpdated = entity.lastUpdated
-
-    if (!isNew) {
-      totalBalance = totalBalance.plus(tokenAmount)
-    }
-
-    tokenDays = tokenDays.plus((blockTimestamp.minus(lastUpdated)).times(totalBalance))
-
-    entity.account = toAddress.toHexString()
-    entity.lastUpdated = blockTimestamp
-    entity.totalBalance = totalBalance
-    entity.tokenDays = tokenDays
-    entity.eventCount = entity.eventCount.plus(BigInt.fromI64(1)) // for debugging
-
-    entity.save()
   }
 }
