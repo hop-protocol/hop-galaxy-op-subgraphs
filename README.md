@@ -1,6 +1,6 @@
 # hop-galaxy-op
 
-> The hop subgraph for Galaxy campaign on optimism that calculates how long an account has LP'd for.
+> The hop subgraph for Galaxy campaign on optimism that calculates how long an account has LP'd for in terms of token days
 
 Note: subgraph will be redeployed on Sep 20 17:00 UTC
 
