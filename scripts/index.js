@@ -15,7 +15,7 @@ async function makeRequest() {
         id
         account
         totalBalance
-        tokenDays
+        tokenSeconds
         completed
         lastUpdated
       }
@@ -60,7 +60,7 @@ async function main() {
   const block = await provider.getBlock()
   const blockTimestamp = block.timestamp
 
-  for (const {account, tokenDays, lastUpdated} of accounts) {
+  for (const {account, tokenSeconds, lastUpdated} of accounts) {
     let totalBalance = BigNumber.from(0)
     for (const lpTokenAddress in tokens) {
       const decimals = tokenDecimals[lpTokenAddress]
@@ -85,8 +85,8 @@ async function main() {
     }
 
     const _totalBalance = Number(utils.formatUnits(totalBalance.toString(), 18))
-    const _tokenDays = Number(tokenDays) + ((blockTimestamp - Number(lastUpdated)) * _totalBalance)
-    console.log(account, _totalBalance, _tokenDays)
+    const _tokenSeconds = Number(tokenSeconds) + ((blockTimestamp - Number(lastUpdated)) * _totalBalance)
+    console.log(account, _totalBalance, _tokenSeconds)
   }
 }
 

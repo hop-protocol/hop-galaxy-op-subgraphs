@@ -3,7 +3,7 @@ type Account @entity {
   account: String!
   totalBalance: BigInt!
   lastUpdated: BigInt!
-  tokenDays: BigInt!
+  tokenSeconds: BigInt!
   completed: Boolean!
   _eventCount: BigInt!
 }

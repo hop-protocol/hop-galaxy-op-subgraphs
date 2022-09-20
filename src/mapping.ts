@@ -3,6 +3,7 @@ import { ERC20, Transfer } from "../generated/ERC20/ERC20"
 import { Swap } from "../generated/Swap/Swap"
 import { Account } from "../generated/schema"
 
+const SECONDS_IN_DAY = 86400
 const STABLE_TOKEN_DAYS = 36500
 const ETH_TOKEN_DAYS = 24
 
@@ -149,24 +150,24 @@ export function handleTransfer(event: Transfer): void {
         const initialBalance = getInitialBalance(fromAddress)
         entity.totalBalance = initialBalance
         entity.lastUpdated = blockTimestamp
-        entity.tokenDays = BigInt.fromI64(0)
+        entity.tokenSeconds = BigInt.fromI64(0)
       }
 
       let totalBalance = entity.totalBalance
-      let tokenDays = entity.tokenDays
+      let tokenSeconds = entity.tokenSeconds
       let lastUpdated = entity.lastUpdated
 
       if (!isNew) {
         totalBalance = totalBalance.minus(tokenAmount)
       }
 
-      tokenDays = tokenDays.plus((blockTimestamp.minus(lastUpdated)).times(totalBalance))
+      tokenSeconds = tokenSeconds.plus((blockTimestamp.minus(lastUpdated)).times(totalBalance))
 
       entity.account = fromAddress.toHexString()
       entity.lastUpdated = blockTimestamp
       entity.totalBalance = totalBalance
-      entity.tokenDays = tokenDays
-      entity.completed = tokenDays.gt(BigInt.fromI64(STABLE_TOKEN_DAYS)) || tokenDays.equals(BigInt.fromI64(STABLE_TOKEN_DAYS))
+      entity.tokenSeconds = tokenSeconds
+      entity.completed = (tokenSeconds.mul(SECONDS_IN_DAY)).gt(BigInt.fromI64(STABLE_TOKEN_DAYS)) || (tokenSeconds.mul(SECONDS_IN_DAY)).equals(BigInt.fromI64(STABLE_TOKEN_DAYS))
       entity._eventCount = entity._eventCount.plus(BigInt.fromI64(1)) // for debugging
 
       entity.save()
@@ -185,24 +186,24 @@ export function handleTransfer(event: Transfer): void {
         const initialBalance = getInitialBalance(toAddress)
         entity.totalBalance = initialBalance
         entity.lastUpdated = blockTimestamp
-        entity.tokenDays = BigInt.fromI64(0)
+        entity.tokenSeconds = BigInt.fromI64(0)
       }
 
       let totalBalance = entity.totalBalance
-      let tokenDays = entity.tokenDays
+      let tokenSeconds = entity.tokenSeconds
       let lastUpdated = entity.lastUpdated
 
       if (!isNew) {
         totalBalance = totalBalance.plus(tokenAmount)
       }
 
-      tokenDays = tokenDays.plus((blockTimestamp.minus(lastUpdated)).times(totalBalance))
+      tokenSeconds = tokenSeconds.plus((blockTimestamp.minus(lastUpdated)).times(totalBalance))
 
       entity.account = toAddress.toHexString()
       entity.lastUpdated = blockTimestamp
       entity.totalBalance = totalBalance
-      entity.tokenDays = tokenDays
-      entity.completed = tokenDays.gt(BigInt.fromI64(STABLE_TOKEN_DAYS)) || tokenDays.equals(BigInt.fromI64(STABLE_TOKEN_DAYS))
+      entity.tokenSeconds = tokenSeconds
+      entity.completed = (tokenSeconds.mul(SECONDS_IN_DAY)).gt(BigInt.fromI64(STABLE_TOKEN_DAYS)) || (tokenSeconds.mul(SECONDS_IN_DAY)).equals(BigInt.fromI64(STABLE_TOKEN_DAYS))
       entity._eventCount = entity._eventCount.plus(BigInt.fromI64(1)) // for debugging
 
       entity.save()
