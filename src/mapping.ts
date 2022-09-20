@@ -6,6 +6,7 @@ import { Account } from "../generated/schema"
 const SECONDS_IN_DAY = 86400
 const STABLE_TOKEN_DAYS = 36500
 const ETH_TOKEN_DAYS = 24
+const CAMPAIGN_START_TIMESTAMP = BigInt.fromI64(1663693200) // Sep 20 17:00 UTC
 
 export function shiftBNDecimals (bn: BigInt, shiftAmount: number): BigInt {
   if (shiftAmount < 0) throw new Error('shiftAmount must be positive')
@@ -104,6 +105,14 @@ export function getInitialBalance(account: Address): BigInt {
   return initialBalance
 }
 
+function hasCampaignStarted (blockTimestamp: BigInt): boolean {
+  return (blockTimestamp.equals(CAMPAIGN_START_TIMESTAMP) || blockTimestamp.gt(CAMPAIGN_START_TIMESTAMP))
+}
+
+function hasCompleted (tokenSeconds: BigInt): boolean {
+  return (tokenSeconds.times(BigInt.fromI64(SECONDS_IN_DAY))).gt(BigInt.fromI64(STABLE_TOKEN_DAYS)) || (tokenSeconds.times(BigInt.fromI64(SECONDS_IN_DAY))).equals(BigInt.fromI64(STABLE_TOKEN_DAYS))
+}
+
 export function handleTransfer(event: Transfer): void {
   const blockTimestamp = event.params._event.block.timestamp
   const fromAddress = event.params.from
@@ -161,13 +170,20 @@ export function handleTransfer(event: Transfer): void {
         totalBalance = totalBalance.minus(tokenAmount)
       }
 
-      tokenSeconds = tokenSeconds.plus((blockTimestamp.minus(lastUpdated)).times(totalBalance))
+      const campaignStarted = hasCampaignStarted(blockTimestamp)
+      if (campaignStarted) {
+        if (lastUpdated.lt(CAMPAIGN_START_TIMESTAMP)) {
+          lastUpdated = CAMPAIGN_START_TIMESTAMP
+        }
+
+        tokenSeconds = tokenSeconds.plus((blockTimestamp.minus(lastUpdated)).times(totalBalance))
+      }
 
       entity.account = fromAddress.toHexString()
       entity.lastUpdated = blockTimestamp
       entity.totalBalance = totalBalance
       entity.tokenSeconds = tokenSeconds
-      entity.completed = (tokenSeconds.mul(SECONDS_IN_DAY)).gt(BigInt.fromI64(STABLE_TOKEN_DAYS)) || (tokenSeconds.mul(SECONDS_IN_DAY)).equals(BigInt.fromI64(STABLE_TOKEN_DAYS))
+      entity.completed = hasCompleted(tokenSeconds)
       entity._eventCount = entity._eventCount.plus(BigInt.fromI64(1)) // for debugging
 
       entity.save()
@@ -197,13 +213,20 @@ export function handleTransfer(event: Transfer): void {
         totalBalance = totalBalance.plus(tokenAmount)
       }
 
-      tokenSeconds = tokenSeconds.plus((blockTimestamp.minus(lastUpdated)).times(totalBalance))
+      const campaignStarted = hasCampaignStarted(blockTimestamp)
+      if (campaignStarted) {
+        if (lastUpdated.lt(CAMPAIGN_START_TIMESTAMP)) {
+          lastUpdated = CAMPAIGN_START_TIMESTAMP
+        }
+
+        tokenSeconds = tokenSeconds.plus((blockTimestamp.minus(lastUpdated)).times(totalBalance))
+      }
 
       entity.account = toAddress.toHexString()
       entity.lastUpdated = blockTimestamp
       entity.totalBalance = totalBalance
       entity.tokenSeconds = tokenSeconds
-      entity.completed = (tokenSeconds.mul(SECONDS_IN_DAY)).gt(BigInt.fromI64(STABLE_TOKEN_DAYS)) || (tokenSeconds.mul(SECONDS_IN_DAY)).equals(BigInt.fromI64(STABLE_TOKEN_DAYS))
+      entity.completed = hasCompleted(tokenSeconds)
       entity._eventCount = entity._eventCount.plus(BigInt.fromI64(1)) // for debugging
 
       entity.save()
