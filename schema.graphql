@@ -15,4 +15,5 @@ type Received @entity {
 
 type Fullfilled @entity {
   id: ID!
+  user: String!
 }

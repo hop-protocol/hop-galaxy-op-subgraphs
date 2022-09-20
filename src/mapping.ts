@@ -198,6 +198,7 @@ export function handleTransfer(event: Transfer): void {
         let fullfilledEntity = Fullfilled.load(id)
         if (fullfilledEntity == null) {
           fullfilledEntity = new Fullfilled(id)
+          fullfilledEntity.user = fromAddress.toHexString()
           fullfilledEntity.save()
         }
       }
@@ -255,6 +256,7 @@ export function handleTransfer(event: Transfer): void {
         let fullfilledEntity = Fullfilled.load(id)
         if (fullfilledEntity == null) {
           fullfilledEntity = new Fullfilled(id)
+          fullfilledEntity.user = toAddress.toHexString()
           fullfilledEntity.save()
         }
       }
