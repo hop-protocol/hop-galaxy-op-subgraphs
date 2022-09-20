@@ -34,6 +34,24 @@ graph deploy --product hosted-service hop-protocol/hop-galaxy-op
 }
 ```
 
+Query using Galxe expected [format](https://www.notion.so/bulletlabs/Subgraph-setup-on-Galxe-2764f9a8a089444b9f1589b62e821f6a):
+
+```gql
+{
+  receiveds(where: {
+    recipient: ""
+  }) {
+    id
+    recipient
+  }
+  fullfilleds(where: {
+    user: ""
+  }) {
+    id
+  }
+}
+```
+
 ## Steps subgraph does
 
 on LP token transfer event
