@@ -13,7 +13,7 @@ type Received @entity {
   recipient: String!
 }
 
-type Fullfilled @entity {
+type Fulfilled @entity {
   id: ID!
   user: String!
 }

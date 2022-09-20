@@ -44,7 +44,7 @@ Query using Galxe expected [format](https://www.notion.so/bulletlabs/Subgraph-se
     id
     recipient
   }
-  fullfilleds(where: {
+  fulfilleds(where: {
     user: ""
   }) {
     id

@@ -1,7 +1,7 @@
 import { Address, BigInt } from "@graphprotocol/graph-ts"
 import { ERC20, Transfer } from "../generated/ERC20/ERC20"
 import { Swap } from "../generated/Swap/Swap"
-import { Account, Received, Fullfilled } from "../generated/schema"
+import { Account, Received, Fulfilled } from "../generated/schema"
 
 const SECONDS_IN_DAY = 86400
 const STABLE_TOKEN_DAYS = 36500
@@ -195,11 +195,11 @@ export function handleTransfer(event: Transfer): void {
         receivedEntity.save()
       }
       if (entity.completed) {
-        let fullfilledEntity = Fullfilled.load(id)
-        if (fullfilledEntity == null) {
-          fullfilledEntity = new Fullfilled(id)
-          fullfilledEntity.user = fromAddress.toHexString()
-          fullfilledEntity.save()
+        let fulfilledEntity = Fulfilled.load(id)
+        if (fulfilledEntity == null) {
+          fulfilledEntity = new Fulfilled(id)
+          fulfilledEntity.user = fromAddress.toHexString()
+          fulfilledEntity.save()
         }
       }
     }
@@ -253,11 +253,11 @@ export function handleTransfer(event: Transfer): void {
         receivedEntity.save()
       }
       if (entity.completed) {
-        let fullfilledEntity = Fullfilled.load(id)
-        if (fullfilledEntity == null) {
-          fullfilledEntity = new Fullfilled(id)
-          fullfilledEntity.user = toAddress.toHexString()
-          fullfilledEntity.save()
+        let fulfilledEntity = Fulfilled.load(id)
+        if (fulfilledEntity == null) {
+          fulfilledEntity = new Fulfilled(id)
+          fulfilledEntity.user = toAddress.toHexString()
+          fulfilledEntity.save()
         }
       }
     }
