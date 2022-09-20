@@ -7,3 +7,12 @@ type Account @entity {
   completed: Boolean!
   _eventCount: BigInt!
 }
+
+type Received @entity {
+  id: ID!
+  recipient: String!
+}
+
+type Fullfilled @entity {
+  id: ID!
+}

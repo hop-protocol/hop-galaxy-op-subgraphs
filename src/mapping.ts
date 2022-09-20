@@ -1,7 +1,7 @@
 import { Address, BigInt } from "@graphprotocol/graph-ts"
 import { ERC20, Transfer } from "../generated/ERC20/ERC20"
 import { Swap } from "../generated/Swap/Swap"
-import { Account } from "../generated/schema"
+import { Account, Received, Fullfilled } from "../generated/schema"
 
 const SECONDS_IN_DAY = 86400
 const STABLE_TOKEN_DAYS = 36500
@@ -187,6 +187,20 @@ export function handleTransfer(event: Transfer): void {
       entity._eventCount = entity._eventCount.plus(BigInt.fromI64(1)) // for debugging
 
       entity.save()
+
+      let receivedEntity = Received.load(id)
+      if (receivedEntity == null) {
+        receivedEntity = new Received(id)
+        receivedEntity.recipient = fromAddress.toHexString()
+        receivedEntity.save()
+      }
+      if (entity.completed) {
+        let fullfilledEntity = Fullfilled.load(id)
+        if (fullfilledEntity == null) {
+          fullfilledEntity = new Fullfilled(id)
+          fullfilledEntity.save()
+        }
+      }
     }
   }
 
@@ -230,6 +244,20 @@ export function handleTransfer(event: Transfer): void {
       entity._eventCount = entity._eventCount.plus(BigInt.fromI64(1)) // for debugging
 
       entity.save()
+
+      let receivedEntity = Received.load(id)
+      if (receivedEntity == null) {
+        receivedEntity = new Received(id)
+        receivedEntity.recipient = toAddress.toHexString()
+        receivedEntity.save()
+      }
+      if (entity.completed) {
+        let fullfilledEntity = Fullfilled.load(id)
+        if (fullfilledEntity == null) {
+          fullfilledEntity = new Fullfilled(id)
+          fullfilledEntity.save()
+        }
+      }
     }
   }
 }
