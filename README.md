@@ -52,6 +52,17 @@ Query using Galxe expected [format](https://www.notion.so/bulletlabs/Subgraph-se
 }
 ```
 
+## Expression
+
+```js
+function (resp) {
+  if (resp != null && (resp.fulfilleds != null && resp.fulfilleds.length > 0) {
+    return 1
+  }
+  return 0
+}
+```
+
 ## Steps subgraph does
 
 on LP token transfer event
@@ -84,6 +95,10 @@ ETH
 * 0.132 ETH for 6 months
 * 0.264 ETH for 3 months
 * 0.792 ETH for 1 month
+
+Combination
+
+* 0.5 ETH for 24 days and 1,217 USDC for 15 days
 
 ## Links
 
