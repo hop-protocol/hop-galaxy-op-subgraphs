@@ -56,7 +56,7 @@ Query using Galxe expected [format](https://www.notion.so/bulletlabs/Subgraph-se
 
 ```js
 function (resp) {
-  if (resp != null && (resp.fulfilleds != null && resp.fulfilleds.length > 0) {
+  if (resp != null && resp.fulfilleds != null && resp.fulfilleds.length > 0) {
     return 1
   }
   return 0
