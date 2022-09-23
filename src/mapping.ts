@@ -110,7 +110,7 @@ function hasCampaignStarted (blockTimestamp: BigInt): boolean {
 }
 
 function hasCompleted (tokenSeconds: BigInt): boolean {
-  return (tokenSeconds.times(BigInt.fromI64(SECONDS_IN_DAY))).gt(BigInt.fromI64(STABLE_TOKEN_DAYS)) || (tokenSeconds.times(BigInt.fromI64(SECONDS_IN_DAY))).equals(BigInt.fromI64(STABLE_TOKEN_DAYS))
+  return tokenSeconds.gt((BigInt.fromI64(STABLE_TOKEN_DAYS).times(BigInt.fromI64(SECONDS_IN_DAY))).times(BigInt.fromI64(10).pow(18)))
 }
 
 export function handleTransfer(event: Transfer): void {
