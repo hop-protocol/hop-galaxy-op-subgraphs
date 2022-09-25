@@ -166,17 +166,17 @@ export function handleTransfer(event: Transfer): void {
       let tokenSeconds = entity.tokenSeconds
       let lastUpdated = entity.lastUpdated
 
-      if (!isNew) {
-        totalBalance = totalBalance.minus(tokenAmount)
-      }
-
       const campaignStarted = hasCampaignStarted(blockTimestamp)
       if (campaignStarted) {
         if (lastUpdated.lt(CAMPAIGN_START_TIMESTAMP)) {
-          lastUpdated = blockTimestamp
+          lastUpdated = CAMPAIGN_START_TIMESTAMP
         }
 
         tokenSeconds = tokenSeconds.plus((blockTimestamp.minus(lastUpdated)).times(totalBalance))
+      }
+
+      if (!isNew) {
+        totalBalance = totalBalance.minus(tokenAmount)
       }
 
       entity.account = fromAddress.toHexString()
@@ -224,10 +224,6 @@ export function handleTransfer(event: Transfer): void {
       let tokenSeconds = entity.tokenSeconds
       let lastUpdated = entity.lastUpdated
 
-      if (!isNew) {
-        totalBalance = totalBalance.plus(tokenAmount)
-      }
-
       const campaignStarted = hasCampaignStarted(blockTimestamp)
       if (campaignStarted) {
         if (lastUpdated.lt(CAMPAIGN_START_TIMESTAMP)) {
@@ -235,6 +231,10 @@ export function handleTransfer(event: Transfer): void {
         }
 
         tokenSeconds = tokenSeconds.plus((blockTimestamp.minus(lastUpdated)).times(totalBalance))
+      }
+
+      if (!isNew) {
+        totalBalance = totalBalance.plus(tokenAmount)
       }
 
       entity.account = toAddress.toHexString()
