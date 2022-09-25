@@ -4,13 +4,19 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "standard index.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@hop-protocol/core": "^0.0.1-beta.86",
+    "dotenv": "^16.0.2",
     "ethers": "^5.7.1",
     "isomorphic-fetch": "^3.0.0"
+  },
+  "devDependencies": {
+    "standard": "^17.0.0"
   }
 }
