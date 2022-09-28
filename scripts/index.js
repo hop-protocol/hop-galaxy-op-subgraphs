@@ -4,8 +4,8 @@ const fetch = require('isomorphic-fetch')
 const erc20Abi = require('../abis/ERC20.json')
 const swapAbi = require('../abis/Swap.json')
 
-const STABLE_TOKEN_DAYS = 36500
-const ETH_TOKEN_DAYS = 24
+const STABLE_TOKEN_DAYS = 18250
+const ETH_TOKEN_DAYS = 12
 const CAMPAIGN_START_TIMESTAMP = BigNumber.from(1663693200) // Sep 20 17:00 UTC
 
 function shiftBNDecimals (bn, shiftAmount) {

@@ -4,8 +4,8 @@ import { Swap } from "../generated/Swap/Swap"
 import { Account, Received, Fulfilled } from "../generated/schema"
 
 const SECONDS_IN_DAY = 86400
-const STABLE_TOKEN_DAYS = 36500
-const ETH_TOKEN_DAYS = 24
+const STABLE_TOKEN_DAYS = 18250
+const ETH_TOKEN_DAYS = 12
 const CAMPAIGN_START_TIMESTAMP = BigInt.fromI64(1663693200) // Sep 20 17:00 UTC
 
 export function shiftBNDecimals (bn: BigInt, shiftAmount: number): BigInt {
