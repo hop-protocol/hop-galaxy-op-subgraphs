@@ -227,7 +227,7 @@ export function handleTransfer(event: Transfer): void {
       const campaignStarted = hasCampaignStarted(blockTimestamp)
       if (campaignStarted) {
         if (lastUpdated.lt(CAMPAIGN_START_TIMESTAMP)) {
-          lastUpdated = blockTimestamp
+          lastUpdated = CAMPAIGN_START_TIMESTAMP
         }
 
         tokenSeconds = tokenSeconds.plus((blockTimestamp.minus(lastUpdated)).times(totalBalance))
