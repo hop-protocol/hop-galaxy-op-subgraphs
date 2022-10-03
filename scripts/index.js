@@ -5,8 +5,6 @@ const { DateTime } = require('luxon')
 const erc20Abi = require('../abis/ERC20.json')
 const swapAbi = require('../abis/Swap.json')
 
-const entities = {}
-
 const tokens = {
   '0x2e17b8193566345a2Dd467183526dEdc42d2d5A8': '0x3c0FFAca566fCcfD9Cc95139FEF6CBA143795963',
   '0xF753A50fc755c6622BBCAa0f59F0522f264F006e': '0xeC4B41Af04cF917b54AEb6Df58c0f8D78895b5Ef',
@@ -89,7 +87,7 @@ function getIsEth (lpTokenAddress) {
   return isEth
 }
 
-async function getNormalizedLpBalance (lpTokenAddress, account, provider) {
+async function getNormalizedLpBalance (lpTokenAddress, account, provider, blockTag) {
   const lpBalance = await getLpBalance(lpTokenAddress, account, provider)
   const tokenDecimals = getTokenDecimals(lpTokenAddress)
   const swapAddress = getSwapAddress(lpTokenAddress)
@@ -97,7 +95,7 @@ async function getNormalizedLpBalance (lpTokenAddress, account, provider) {
   const swapContract = new Contract(swapAddress, swapAbi, provider)
   let tokenAmount = BigNumber.from(0)
   if (lpBalance.gt(BigNumber.from(0))) {
-    const amountResult = await swapContract.calculateRemoveLiquidityOneToken(account, lpBalance, 0)
+    const amountResult = await swapContract.calculateRemoveLiquidityOneToken(account, lpBalance, 0, { blockTag })
 
     // convert to 18 decimals
     tokenAmount = shiftBNDecimals(amountResult, 18 - tokenDecimals)
@@ -111,11 +109,11 @@ async function getNormalizedLpBalance (lpTokenAddress, account, provider) {
   return tokenAmount
 }
 
-async function getInitialBalance (account, provider) {
-  const usdcLpBalance = await getNormalizedLpBalance('0x2e17b8193566345a2Dd467183526dEdc42d2d5A8', account, provider)
-  const usdtLpBalance = await getNormalizedLpBalance('0xF753A50fc755c6622BBCAa0f59F0522f264F006e', account, provider)
-  const daiLpBalance = await getNormalizedLpBalance('0x22D63A26c730d49e5Eab461E4f5De1D8BdF89C92', account, provider)
-  const ethLpBalance = await getNormalizedLpBalance('0x5C2048094bAaDe483D0b1DA85c3Da6200A88a849', account, provider)
+async function getInitialBalance (account, provider, blockTag) {
+  const usdcLpBalance = await getNormalizedLpBalance('0x2e17b8193566345a2Dd467183526dEdc42d2d5A8', account, provider, blockTag)
+  const usdtLpBalance = await getNormalizedLpBalance('0xF753A50fc755c6622BBCAa0f59F0522f264F006e', account, provider, blockTag)
+  const daiLpBalance = await getNormalizedLpBalance('0x22D63A26c730d49e5Eab461E4f5De1D8BdF89C92', account, provider, blockTag)
+  const ethLpBalance = await getNormalizedLpBalance('0x5C2048094bAaDe483D0b1DA85c3Da6200A88a849', account, provider, blockTag)
   const initialBalance = usdcLpBalance.add(usdtLpBalance).add(daiLpBalance).add(ethLpBalance)
   return initialBalance
 }
@@ -130,12 +128,13 @@ function getTokenDays (_tokenSeconds) {
   return tokenDays
 }
 
-async function handleTransfer (event, provider) {
+async function handleTransfer (event, provider, entities) {
   const blockTimestamp = event.blockTimestamp
   const fromAddress = event.args.from.toLowerCase()
   const toAddress = event.args.to.toLowerCase()
   const transferLpAmount = BigNumber.from(event.args.value)
   const lpTokenAddress = event.address
+  const blockTag = event.blockNumber
 
   const tokenDecimals = getTokenDecimals(lpTokenAddress)
   const swapAddress = getSwapAddress(lpTokenAddress)
@@ -145,7 +144,7 @@ async function handleTransfer (event, provider) {
   {
     const swapContract = new Contract(swapAddress, swapAbi, provider)
     if (transferLpAmount.gt(BigNumber.from(0))) {
-      const amountResult = await swapContract.calculateRemoveLiquidityOneToken(fromAddress, transferLpAmount, 0)
+      const amountResult = await swapContract.calculateRemoveLiquidityOneToken(fromAddress, transferLpAmount, 0, { blockTag })
 
       // convert to 18 decimals
       tokenAmount = shiftBNDecimals(amountResult, 18 - tokenDecimals)
@@ -167,7 +166,7 @@ async function handleTransfer (event, provider) {
         isNew = true
         entity = { id }
 
-        const initialBalance = await getInitialBalance(fromAddress, provider)
+        const initialBalance = await getInitialBalance(fromAddress, provider, blockTag)
         entity.totalBalance = initialBalance
         entity.lastUpdated = BigNumber.from(blockTimestamp)
         entity.tokenSeconds = BigNumber.from(0)
@@ -214,7 +213,7 @@ async function handleTransfer (event, provider) {
         isNew = true
         entity = { id }
 
-        const initialBalance = await getInitialBalance(toAddress, provider)
+        const initialBalance = await getInitialBalance(toAddress, provider, blockTag)
         entity.totalBalance = initialBalance
         entity.lastUpdated = BigNumber.from(blockTimestamp)
         entity.tokenSeconds = BigNumber.from(0)
@@ -381,7 +380,7 @@ async function getLatestStateDebug () {
 
       const swapAddress = tokens[lpTokenAddress]
       const swapContract = new Contract(swapAddress, swapAbi, provider)
-      let tokenAmount = await swapContract.calculateRemoveLiquidityOneToken(account, lpBalance, 0)
+      let tokenAmount = await swapContract.calculateRemoveLiquidityOneToken(account, lpBalance, 0, { blockTag })
       tokenAmount = shiftBNDecimals(tokenAmount, 18 - decimals)
 
       const isEth = lpTokenAddress === '0x5C2048094bAaDe483D0b1DA85c3Da6200A88a849'
@@ -560,7 +559,7 @@ async function getEventsDebug () {
   console.log('eventCount:', eventCount)
 }
 
-async function runMapping (account, rpcUrl) {
+async function runMapping (account, rpcUrl, startTimestamp = 0, endTimestamp = Math.floor(Date.now() / 1000)) {
   const provider = new providers.StaticJsonRpcProvider(rpcUrl || 'https://mainnet.optimism.io')
   const logs = await fetchLogsForAccount(account, provider)
 
@@ -577,14 +576,25 @@ async function runMapping (account, rpcUrl) {
     })
   }
 
-  for (const log of logs) {
-    await handleTransfer(log, provider)
+  let filtered = logs.filter((x) => {
+    console.log(x.blockTimestamp)
+    return x.blockTimestamp >= startTimestamp && x.blockTimestamp <= endTimestamp
+  })
+
+  console.log('logsCount:', filtered.length)
+
+  const entities = {}
+
+  for (const log of filtered) {
+    console.log('log:', log.args.from, log.args.to, utils.formatUnits(log.args.value.toString(), 18))
+    await handleTransfer(log, provider, entities)
   }
 
   for (const key in entities) {
     const entity = entities[key]
     const prettied = getPrettifiedEntity(entity)
     console.log(prettied)
+    return prettied
   }
 }
 
