@@ -560,12 +560,11 @@ async function getEventsDebug () {
   console.log('eventCount:', eventCount)
 }
 
-async function runMapping () {
-  const account = process.env.ACCOUNT_DEBUG
-  const provider = new providers.StaticJsonRpcProvider(process.env.OPTIMISM_RPC_URL || 'https://mainnet.optimism.io')
+async function runMapping (account, rpcUrl) {
+  const provider = new providers.StaticJsonRpcProvider(rpcUrl || 'https://mainnet.optimism.io')
   const logs = await fetchLogsForAccount(account, provider)
 
-  const triggerEvent = true
+  const triggerEvent = false
   if (triggerEvent) {
     logs.push({
       blockTimestamp: Math.floor(Date.now() / 1000),
@@ -589,8 +588,4 @@ async function runMapping () {
   }
 }
 
-async function main () {
-  await runMapping()
-}
-
-main().catch(console.error)
+module.exports = { runMapping }
