@@ -113,6 +113,23 @@ function hasCompleted (tokenSeconds: BigInt): boolean {
   return tokenSeconds.gt((BigInt.fromI64(STABLE_TOKEN_DAYS).times(BigInt.fromI64(SECONDS_IN_DAY))).times(BigInt.fromI64(10).pow(18)))
 }
 
+function checkShouldSkip (address: Address): boolean {
+  const zeroAddress = Address.fromString('0x0000000000000000000000000000000000000000')
+  if (
+    address.equals(zeroAddress) ||
+    address.equals(Address.fromString('0x09992Dd7B32f7b35D347DE9Bdaf1919a57d38E82')) || // SNX OP rewards
+    address.equals(Address.fromString('0x95d6A95BECfd98a7032Ed0c7d950ff6e0Fa8d697')) || // ETH HOP rewards
+    address.equals(Address.fromString('0xf587B9309c603feEdf0445aF4D3B21300989e93a')) || // USDC HOP rewards
+    address.equals(Address.fromString('0x392B9780cFD362bD6951edFA9eBc31e68748b190')) || // DAI HOP rewards
+    address.equals(Address.fromString('0xAeB1b49921E0D2D96FcDBe0D486190B2907B3e0B')) || // USDT HOP rewards
+    address.equals(Address.fromString('0x25a5A48C35e75BD2EFf53D94f0BB60d5A00E36ea')) // SNX HOP rewards
+  ) {
+    return true
+  }
+
+  return false
+}
+
 export function handleTransfer(event: Transfer): void {
   const blockTimestamp = event.params._event.block.timestamp
   const fromAddress = event.params.from
@@ -146,9 +163,9 @@ export function handleTransfer(event: Transfer): void {
    tokenAmount = rate.times(tokenAmount)
   }
 
-  const zeroAddress = Address.fromString('0x0000000000000000000000000000000000000000')
   {
-    if (!fromAddress.equals(zeroAddress)) {
+    const shouldSkip = checkShouldSkip(fromAddress)
+    if (!shouldSkip) {
       const id = fromAddress.toHexString()
       let entity = Account.load(id)
       let isNew = false
@@ -206,7 +223,8 @@ export function handleTransfer(event: Transfer): void {
   }
 
   {
-    if (!toAddress.equals(zeroAddress)) {
+    const shouldSkip = checkShouldSkip(toAddress)
+    if (!shouldSkip) {
       const id = toAddress.toHexString()
       let entity = Account.load(id)
       let isNew = false

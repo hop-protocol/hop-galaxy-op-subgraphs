@@ -1,4 +1,6 @@
 specVersion: 0.0.2
+description: Hop Galaxy Optimism
+repository: https://github.com/hop-protocol/hop-galaxy-op-subgraphs
 schema:
   file: ./schema.graphql
 dataSources:
