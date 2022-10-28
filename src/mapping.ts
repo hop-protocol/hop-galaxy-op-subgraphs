@@ -79,10 +79,12 @@ export function getNormalizedLpBalance(lpTokenAddress: string, account: Address)
   let tokenAmount = BigInt.fromI64(0)
   if (lpBalance.gt(BigInt.fromI64(0))) {
     const callResult = swapContract.try_calculateRemoveLiquidityOneToken(account, lpBalance, 0)
+    let amountResult = BigInt.fromI64(0)
     if (callResult.reverted) {
-      throw new Error('call reverted in getNormalizedLpBalance')
+      // throw new Error('call reverted in getNormalizedLpBalance')
+    } else {
+      amountResult = callResult.value
     }
-    const amountResult = callResult.value
 
     // convert to 18 decimals
     tokenAmount = shiftBNDecimals(amountResult, 18 - tokenDecimals)
