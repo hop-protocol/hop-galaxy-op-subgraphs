@@ -82,6 +82,7 @@ on LP token transfer event
 
 ## LP examples
 
+```
 $18,250 completes quest in 1 days
 $9,125 completes quest in 2 days
 $6,083 completes quest in 3 days
@@ -113,6 +114,7 @@ $1,013 completes quest in 18 days
 1.2 ETH completes quest in 10 days
 1.09 ETH completes quest in 11 days
 1 ETH completes quest in 12 days
+```
 
 ## Links
 
