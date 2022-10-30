@@ -34,9 +34,9 @@ function hasCampaignStarted (blockTimestamp) {
   return (blockTimestamp.eq(CAMPAIGN_START_TIMESTAMP) || blockTimestamp.gt(CAMPAIGN_START_TIMESTAMP))
 }
 
-async function getLpBalance (contractAddress, account, provider) {
+async function getLpBalance (contractAddress, account, provider, blockTag) {
   const contract = new Contract(contractAddress, erc20Abi, provider)
-  return contract.balanceOf(account)
+  return contract.balanceOf(account, { blockTag })
 }
 
 function getTokenDecimals (lpTokenAddress) {
@@ -87,15 +87,33 @@ function getIsEth (lpTokenAddress) {
   return isEth
 }
 
+async function calculateAmountFromLp(swapContract, account, lpAmount, blockTag) {
+  try {
+    const amountResult = await swapContract.calculateRemoveLiquidityOneToken(account, lpAmount, 0, { blockTag })
+    return amountResult
+  } catch (err) {
+    console.log('error', account, lpAmount.toString(), blockTag)
+    console.trace()
+    throw err
+  }
+
+  /*
+  const virtualPrice = await swapContract.getVirtualPrice({ blockTag })
+  const amountResult = lpAmount.mul(virtualPrice)
+  return amountResult
+  */
+}
+
 async function getNormalizedLpBalance (lpTokenAddress, account, provider, blockTag) {
-  const lpBalance = await getLpBalance(lpTokenAddress, account, provider)
+  const lpBalance = await getLpBalance(lpTokenAddress, account, provider, blockTag)
   const tokenDecimals = getTokenDecimals(lpTokenAddress)
   const swapAddress = getSwapAddress(lpTokenAddress)
   const isEth = getIsEth(lpTokenAddress)
   const swapContract = new Contract(swapAddress, swapAbi, provider)
   let tokenAmount = BigNumber.from(0)
   if (lpBalance.gt(BigNumber.from(0))) {
-    const amountResult = await swapContract.calculateRemoveLiquidityOneToken(account, lpBalance, 0, { blockTag })
+    // const amountResult = await swapContract.calculateRemoveLiquidityOneToken(account, lpBalance, 0, { blockTag })
+    const amountResult = await calculateAmountFromLp(swapContract, account, lpBalance, blockTag)
 
     // convert to 18 decimals
     tokenAmount = shiftBNDecimals(amountResult, 18 - tokenDecimals)
@@ -128,6 +146,28 @@ function getTokenDays (_tokenSeconds) {
   return tokenDays
 }
 
+function checkShouldSkip (address, checkZeroAddress) {
+  address = address.toLowerCase()
+  const zeroAddress = '0x0000000000000000000000000000000000000000'
+  if (checkZeroAddress) {
+    if (address === zeroAddress) {
+      return true
+    }
+  }
+  if (
+    address === '0x09992Dd7B32f7b35D347DE9Bdaf1919a57d38E82'.toLowerCase() || // SNX OP rewards
+    address === '0x95d6A95BECfd98a7032Ed0c7d950ff6e0Fa8d697'.toLowerCase() || // ETH HOP rewards
+    address === '0xf587B9309c603feEdf0445aF4D3B21300989e93a'.toLowerCase() || // USDC HOP rewards
+    address === '0x392B9780cFD362bD6951edFA9eBc31e68748b190'.toLowerCase() || // DAI HOP rewards
+    address === '0xAeB1b49921E0D2D96FcDBe0D486190B2907B3e0B'.toLowerCase() || // USDT HOP rewards
+    address === '0x25a5A48C35e75BD2EFf53D94f0BB60d5A00E36ea'.toLowerCase() // SNX HOP rewards
+  ) {
+    return true
+  }
+
+  return false
+}
+
 async function handleTransfer (event, provider, entities) {
   const blockTimestamp = event.blockTimestamp
   const fromAddress = event.args.from.toLowerCase()
@@ -144,7 +184,8 @@ async function handleTransfer (event, provider, entities) {
   {
     const swapContract = new Contract(swapAddress, swapAbi, provider)
     if (transferLpAmount.gt(BigNumber.from(0))) {
-      const amountResult = await swapContract.calculateRemoveLiquidityOneToken(fromAddress, transferLpAmount, 0, { blockTag })
+      // const amountResult = await swapContract.calculateRemoveLiquidityOneToken(fromAddress, transferLpAmount, 0, { blockTag })
+      const amountResult = await calculateAmountFromLp(swapContract, fromAddress, transferLpAmount, blockTag)
 
       // convert to 18 decimals
       tokenAmount = shiftBNDecimals(amountResult, 18 - tokenDecimals)
@@ -156,9 +197,9 @@ async function handleTransfer (event, provider, entities) {
     tokenAmount = rate.mul(tokenAmount)
   }
 
-  const zeroAddress = '0x0000000000000000000000000000000000000000'
   {
-    if (fromAddress !== zeroAddress) {
+    const shouldSkip = checkShouldSkip(fromAddress, true) || checkShouldSkip(toAddress)
+    if (!shouldSkip) {
       const id = fromAddress
       let entity = entities[id]
       let isNew = false
@@ -190,7 +231,13 @@ async function handleTransfer (event, provider, entities) {
       }
 
       if (!isNew) {
+        console.log('totalBalanceSub', utils.formatUnits(totalBalance, 18), utils.formatUnits(tokenAmount, 18), utils.formatUnits(totalBalance.sub(tokenAmount), 18))
         totalBalance = totalBalance.sub(tokenAmount)
+        /*
+        if (totalBalance.lt(0)) {
+          totalBalance = BigNumber.from(0)
+        }
+        */
       }
 
       entity.account = fromAddress
@@ -200,12 +247,15 @@ async function handleTransfer (event, provider, entities) {
       entity.completed = hasCompleted(tokenSeconds)
       entity._eventCount = entity._eventCount.add(BigNumber.from(1)) // for debugging
 
+      console.log('entity update', getPrettifiedEntity(entity))
+
       entities[id] = entity
     }
   }
 
   {
-    if (toAddress !== zeroAddress) {
+    const shouldSkip = checkShouldSkip(toAddress, true) || checkShouldSkip(fromAddress)
+    if (!shouldSkip) {
       const id = toAddress
       let entity = entities[id]
       let isNew = false
@@ -241,6 +291,7 @@ async function handleTransfer (event, provider, entities) {
       }
 
       if (!isNew) {
+        console.log('totalBalanceSub', utils.formatUnits(totalBalance, 18), utils.formatUnits(tokenAmount, 18), utils.formatUnits(totalBalance.add(tokenAmount), 18))
         totalBalance = totalBalance.add(tokenAmount)
       }
 
@@ -380,7 +431,8 @@ async function getLatestStateDebug () {
 
       const swapAddress = tokens[lpTokenAddress]
       const swapContract = new Contract(swapAddress, swapAbi, provider)
-      let tokenAmount = await swapContract.calculateRemoveLiquidityOneToken(account, lpBalance, 0, { blockTag })
+      // let tokenAmount = await swapContract.calculateRemoveLiquidityOneToken(account, lpBalance, 0, { blockTag })
+      let tokenAmount = await calculateAmountFromLp(swapContract, account, lpBalance, blockTag)
       tokenAmount = shiftBNDecimals(tokenAmount, 18 - decimals)
 
       const isEth = lpTokenAddress === '0x5C2048094bAaDe483D0b1DA85c3Da6200A88a849'
@@ -416,7 +468,8 @@ async function getInitialBalanceDebug () {
 
       const swapAddress = tokens[lpTokenAddress]
       const swapContract = new Contract(swapAddress, swapAbi, provider)
-      let tokenAmount = await swapContract.calculateRemoveLiquidityOneToken(account, lpBalance, 0)
+      // let tokenAmount = await swapContract.calculateRemoveLiquidityOneToken(account, lpBalance, 0)
+      let tokenAmount = await calculateAmountFromLp(swapContract, account, lpBalance)
       tokenAmount = shiftBNDecimals(tokenAmount, 18 - decimals)
 
       const isEth = lpTokenAddress === '0x5C2048094bAaDe483D0b1DA85c3Da6200A88a849'
@@ -520,7 +573,8 @@ async function getEventsDebug () {
     const blockTag = log.blockNumber
     const block = await provider.getBlock(blockTag)
     const blockTimestamp = Number(block.timestamp.toString())
-    let tokenAmount = await swapContract.calculateRemoveLiquidityOneToken(account, lpBalance, 0, { blockTag })
+    // let tokenAmount = await swapContract.calculateRemoveLiquidityOneToken(account, lpBalance, 0, { blockTag })
+    let tokenAmount = await calculateAmountFromLp(swapContract, account, lpBalance, blockTag)
     tokenAmount = shiftBNDecimals(tokenAmount, 18 - decimals)
 
     const isEth = lpTokenAddress === '0x5C2048094bAaDe483D0b1DA85c3Da6200A88a849'
