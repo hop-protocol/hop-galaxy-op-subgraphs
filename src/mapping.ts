@@ -5,7 +5,8 @@ import { Account, Received, Fulfilled } from "../generated/schema"
 
 const SECONDS_IN_DAY = 86400
 const STABLE_TOKEN_DAYS = 18250
-const ETH_TOKEN_DAYS = 12
+const ETH_TOKEN_DAYS = 12 // STABLE_TOKEN_DAYS / 1500
+const SNX_TOKEN_DAYS = 7300 // STABLE_TOKEN_DAYS / 2.50
 const CAMPAIGN_START_TIMESTAMP = BigInt.fromI64(1663693200) // Sep 20 17:00 UTC
 
 export function shiftBNDecimals (bn: BigInt, shiftAmount: number): BigInt {
@@ -36,6 +37,9 @@ export function getTokenDecimals(lpTokenAddress: Address): number {
   if (lpTokenAddress.equals(Address.fromString('0x5C2048094bAaDe483D0b1DA85c3Da6200A88a849'))) {
     tokenDecimals = 18
   }
+  if (lpTokenAddress.equals(Address.fromString('0xe63337211DdE2569C348D9B3A0acb5637CFa8aB3'))) {
+    tokenDecimals = 18
+  }
 
   if (tokenDecimals == 0) {
     throw new Error('expected tokenDecimals to be set')
@@ -54,6 +58,8 @@ export function getSwapAddress(lpTokenAddress: Address): Address {
     swapAddress = Address.fromString('0xF181eD90D6CfaC84B8073FdEA6D34Aa744B41810')
   } else if (lpTokenAddress.equals(Address.fromString('0x5C2048094bAaDe483D0b1DA85c3Da6200A88a849'))) {
     swapAddress = Address.fromString('0xaa30D6bba6285d0585722e2440Ff89E23EF68864')
+  } else if (lpTokenAddress.equals(Address.fromString('0xe63337211DdE2569C348D9B3A0acb5637CFa8aB3'))) {
+    swapAddress = Address.fromString('0x1990BC6dfe2ef605Bfc08f5A23564dB75642Ad73')
   } else {
     throw new Error('unrecognized address')
   }
@@ -70,11 +76,21 @@ export function getIsEth(lpTokenAddress: Address): boolean {
   return isEth
 }
 
+export function getIsSnx(lpTokenAddress: Address): boolean {
+  let isSnx = false
+  if (lpTokenAddress.equals(Address.fromString('0xe63337211DdE2569C348D9B3A0acb5637CFa8aB3'))) {
+    isSnx = true
+  }
+
+  return isSnx
+}
+
 export function getNormalizedLpBalance(lpTokenAddress: string, account: Address): BigInt {
   const lpBalance = getLpBalance(lpTokenAddress, account)
   const tokenDecimals = getTokenDecimals(Address.fromString(lpTokenAddress))
   const swapAddress = getSwapAddress(Address.fromString(lpTokenAddress))
   const isEth = getIsEth(Address.fromString(lpTokenAddress))
+  const isSnx = getIsSnx(Address.fromString(lpTokenAddress))
   const swapContract = Swap.bind(swapAddress)
   let tokenAmount = BigInt.fromI64(0)
   if (lpBalance.gt(BigInt.fromI64(0))) {
@@ -93,6 +109,9 @@ export function getNormalizedLpBalance(lpTokenAddress: string, account: Address)
   if (isEth) {
    const rate = BigInt.fromI64(STABLE_TOKEN_DAYS).div(BigInt.fromI64(ETH_TOKEN_DAYS))
    tokenAmount = rate.times(tokenAmount)
+  } else if (isSnx) {
+   const rate = BigInt.fromI64(STABLE_TOKEN_DAYS).div(BigInt.fromI64(SNX_TOKEN_DAYS))
+   tokenAmount = rate.times(tokenAmount)
   }
 
   return tokenAmount
@@ -103,7 +122,8 @@ export function getInitialBalance(account: Address): BigInt {
   const usdtLpBalance = getNormalizedLpBalance('0xF753A50fc755c6622BBCAa0f59F0522f264F006e', account)
   const daiLpBalance = getNormalizedLpBalance('0x22D63A26c730d49e5Eab461E4f5De1D8BdF89C92', account)
   const ethLpBalance = getNormalizedLpBalance('0x5C2048094bAaDe483D0b1DA85c3Da6200A88a849', account)
-  const initialBalance = usdcLpBalance.plus(usdtLpBalance).plus(daiLpBalance).plus(ethLpBalance)
+  const snxLpBalance = getNormalizedLpBalance('0xe63337211DdE2569C348D9B3A0acb5637CFa8aB3', account)
+  const initialBalance = usdcLpBalance.plus(usdtLpBalance).plus(daiLpBalance).plus(ethLpBalance).plus(snxLpBalance)
   return initialBalance
 }
 
@@ -115,10 +135,14 @@ function hasCompleted (tokenSeconds: BigInt): boolean {
   return tokenSeconds.gt((BigInt.fromI64(STABLE_TOKEN_DAYS).times(BigInt.fromI64(SECONDS_IN_DAY))).times(BigInt.fromI64(10).pow(18)))
 }
 
-function checkShouldSkip (address: Address): boolean {
-  const zeroAddress = Address.fromString('0x0000000000000000000000000000000000000000')
+function checkShouldSkip (address: Address, checkZeroAddress: boolean = false): boolean {
+  if (checkZeroAddress) {
+    const zeroAddress = Address.fromString('0x0000000000000000000000000000000000000000')
+    if (address.equals(zeroAddress)) {
+      return false
+    }
+  }
   if (
-    address.equals(zeroAddress) ||
     address.equals(Address.fromString('0x09992Dd7B32f7b35D347DE9Bdaf1919a57d38E82')) || // SNX OP rewards
     address.equals(Address.fromString('0x95d6A95BECfd98a7032Ed0c7d950ff6e0Fa8d697')) || // ETH HOP rewards
     address.equals(Address.fromString('0xf587B9309c603feEdf0445aF4D3B21300989e93a')) || // USDC HOP rewards
@@ -142,6 +166,7 @@ export function handleTransfer(event: Transfer): void {
   const tokenDecimals = getTokenDecimals(lpTokenAddress)
   const swapAddress = getSwapAddress(lpTokenAddress)
   const isEth = getIsEth(lpTokenAddress)
+  const isSnx = getIsSnx(lpTokenAddress)
 
   let tokenAmount = BigInt.fromI64(0)
   {
@@ -163,10 +188,13 @@ export function handleTransfer(event: Transfer): void {
   if (isEth) {
    const rate = BigInt.fromI64(STABLE_TOKEN_DAYS).div(BigInt.fromI64(ETH_TOKEN_DAYS))
    tokenAmount = rate.times(tokenAmount)
+  } else if (isSnx) {
+   const rate = BigInt.fromI64(STABLE_TOKEN_DAYS).div(BigInt.fromI64(SNX_TOKEN_DAYS))
+   tokenAmount = rate.times(tokenAmount)
   }
 
   {
-    const shouldSkip = checkShouldSkip(fromAddress)
+    const shouldSkip = checkShouldSkip(fromAddress, true) || checkShouldSkip(toAddress)
     if (!shouldSkip) {
       const id = fromAddress.toHexString()
       let entity = Account.load(id)
@@ -225,7 +253,7 @@ export function handleTransfer(event: Transfer): void {
   }
 
   {
-    const shouldSkip = checkShouldSkip(toAddress)
+    const shouldSkip = checkShouldSkip(toAddress, true) || checkShouldSkip(fromAddress)
     if (!shouldSkip) {
       const id = toAddress.toHexString()
       let entity = Account.load(id)

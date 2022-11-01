@@ -7,7 +7,8 @@
     "deploy": "graph deploy --node https://api.studio.thegraph.com/deploy/ hop-galaxy-op",
     "create-local": "graph create --node http://localhost:8020/ hop-galaxy-op",
     "remove-local": "graph remove --node http://localhost:8020/ hop-galaxy-op",
-    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 hop-galaxy-op"
+    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 hop-galaxy-op",
+    "test": "(cd scripts && npm test)"
   },
   "dependencies": {
     "@graphprotocol/graph-cli": "0.29.0",

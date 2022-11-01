@@ -100,4 +100,28 @@ dataSources:
           handler: handleTransfer
 
       file: ./src/mapping.ts
+  - kind: ethereum
+    name: SNX_LP
+    network: optimism
+    source:
+      address: "0xe63337211DdE2569C348D9B3A0acb5637CFa8aB3"
+      abi: ERC20
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.5
+      language: wasm/assemblyscript
+      entities:
+        - Transfer(indexed address,indexed address,uint256)
+
+      abis:
+        - name: ERC20
+          file: ./abis/ERC20.json
+        - name: Swap
+          file: ./abis/Swap.json
+      eventHandlers:
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleTransfer
+
+      file: ./src/mapping.ts
 
