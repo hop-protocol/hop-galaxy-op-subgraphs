@@ -51,9 +51,19 @@ describe('test random account 4', () => {
   }, 10 * 60 * 1000)
   it('should not return as completed', async () => {
     const startTimestamp = 0
-    const endTimestamp = 1667098494-1
+    const endTimestamp = 1667098494 - 1
     const result = await runMapping(account, rpcUrl, startTimestamp, endTimestamp)
     console.log(result)
     expect(result.completed).toBe(false)
+  }, 10 * 60 * 1000)
+})
+
+describe('test random account 5', () => {
+  const account = '0x93242bb2b8f429a21c8d194ad88e7c4745e395a1'
+  it('should return as completed', async () => {
+    const startTimestamp = 0
+    const endTimestamp = 1668883740
+    const result = await runMapping(account, rpcUrl, startTimestamp, endTimestamp)
+    expect(result.completed).toBe(true)
   }, 10 * 60 * 1000)
 })

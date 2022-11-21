@@ -17,27 +17,45 @@ export function shiftBNDecimals (bn: BigInt, shiftAmount: number): BigInt {
 export function getLpBalance(contractAddress: string, account: Address): BigInt {
   const contract = ERC20.bind(Address.fromString(contractAddress))
   const balanceCallResult = contract.try_balanceOf(account)
+  let amountResult = BigInt.fromI64(0)
   if (balanceCallResult.reverted) {
-    throw new Error('call reverted in getLpBalance')
+    // throw new Error('call reverted in getLpBalance. account=' + account.toHexString() + ', contractAddress=' + contractAddress)
+  } else {
+    amountResult = balanceCallResult.value
   }
-  return balanceCallResult.value
+  return amountResult
 }
 
 export function getTokenDecimals(lpTokenAddress: Address): number {
   let tokenDecimals = 0
-  if (lpTokenAddress.equals(Address.fromString('0x2e17b8193566345a2Dd467183526dEdc42d2d5A8'))) {
+  if (
+    lpTokenAddress.equals(Address.fromString('0x2e17b8193566345a2Dd467183526dEdc42d2d5A8')) || // usdc
+    lpTokenAddress.equals(Address.fromString('0x3c0FFAca566fCcfD9Cc95139FEF6CBA143795963')) // saddle
+  ) {
     tokenDecimals = 6
   }
-  if (lpTokenAddress.equals(Address.fromString('0xF753A50fc755c6622BBCAa0f59F0522f264F006e'))) {
+  if (
+    lpTokenAddress.equals(Address.fromString('0xF753A50fc755c6622BBCAa0f59F0522f264F006e')) || // usdt
+    lpTokenAddress.equals(Address.fromString('0xeC4B41Af04cF917b54AEb6Df58c0f8D78895b5Ef')) // saddle
+  ) {
     tokenDecimals = 6
   }
-  if (lpTokenAddress.equals(Address.fromString('0x22D63A26c730d49e5Eab461E4f5De1D8BdF89C92'))) {
+  if (
+    lpTokenAddress.equals(Address.fromString('0x22D63A26c730d49e5Eab461E4f5De1D8BdF89C92')) || // dai
+    lpTokenAddress.equals(Address.fromString('0xF181eD90D6CfaC84B8073FdEA6D34Aa744B41810')) // saddle
+  ) {
     tokenDecimals = 18
   }
-  if (lpTokenAddress.equals(Address.fromString('0x5C2048094bAaDe483D0b1DA85c3Da6200A88a849'))) {
+  if (
+    lpTokenAddress.equals(Address.fromString('0x5C2048094bAaDe483D0b1DA85c3Da6200A88a849')) || // eth
+    lpTokenAddress.equals(Address.fromString('0xaa30D6bba6285d0585722e2440Ff89E23EF68864')) // saddle
+  ) {
     tokenDecimals = 18
   }
-  if (lpTokenAddress.equals(Address.fromString('0xe63337211DdE2569C348D9B3A0acb5637CFa8aB3'))) {
+  if (
+    lpTokenAddress.equals(Address.fromString('0xe63337211DdE2569C348D9B3A0acb5637CFa8aB3')) || // snx
+    lpTokenAddress.equals(Address.fromString('0x1990BC6dfe2ef605Bfc08f5A23564dB75642Ad73')) // saddle
+  ) {
     tokenDecimals = 18
   }
 
@@ -85,6 +103,25 @@ export function getIsSnx(lpTokenAddress: Address): boolean {
   return isSnx
 }
 
+export function calculateAmountFromLp (swapContract: Swap, account: Address, lpAmount: BigInt):BigInt {
+  const callResult = swapContract.try_calculateRemoveLiquidityOneToken(account, lpAmount, 0)
+  let amountResult = BigInt.fromI64(0)
+  if (callResult.reverted) {
+    // throw new Error('call reverted in calculateAmountFromLp')
+  } else {
+    amountResult = callResult.value
+  }
+
+  const tokenDecimals = getTokenDecimals(swapContract._address)
+  const lpFeeBN = BigInt.fromI64(4).times(BigInt.fromI64(10).pow(tokenDecimals as u8))
+  const lpFeeAmount = amountResult
+    .times(lpFeeBN)
+    .div(BigInt.fromI64(1).times(BigInt.fromI64(10).pow(tokenDecimals as u8)))
+    .div(BigInt.fromI64(10000))
+
+  return amountResult.plus(lpFeeAmount)
+}
+
 export function getNormalizedLpBalance(lpTokenAddress: string, account: Address): BigInt {
   const lpBalance = getLpBalance(lpTokenAddress, account)
   const tokenDecimals = getTokenDecimals(Address.fromString(lpTokenAddress))
@@ -94,13 +131,7 @@ export function getNormalizedLpBalance(lpTokenAddress: string, account: Address)
   const swapContract = Swap.bind(swapAddress)
   let tokenAmount = BigInt.fromI64(0)
   if (lpBalance.gt(BigInt.fromI64(0))) {
-    const callResult = swapContract.try_calculateRemoveLiquidityOneToken(account, lpBalance, 0)
-    let amountResult = BigInt.fromI64(0)
-    if (callResult.reverted) {
-      // throw new Error('call reverted in getNormalizedLpBalance')
-    } else {
-      amountResult = callResult.value
-    }
+    const amountResult = calculateAmountFromLp(swapContract, account, lpBalance)
 
     // convert to 18 decimals
     tokenAmount = shiftBNDecimals(amountResult, 18 - tokenDecimals)
@@ -172,13 +203,7 @@ export function handleTransfer(event: Transfer): void {
   {
     const swapContract = Swap.bind(swapAddress)
     if (transferLpAmount.gt(BigInt.fromI64(0))) {
-      const callResult = swapContract.try_calculateRemoveLiquidityOneToken(fromAddress, transferLpAmount, 0)
-      let amountResult = BigInt.fromI64(0)
-      if (callResult.reverted) {
-        // throw new Error('call reverted in handleTransfer')
-      } else {
-        amountResult = callResult.value
-      }
+      const amountResult = calculateAmountFromLp(swapContract, fromAddress, transferLpAmount)
 
       // convert to 18 decimals
       tokenAmount = shiftBNDecimals(amountResult, 18 - tokenDecimals)

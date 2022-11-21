@@ -41,16 +41,28 @@ async function getLpBalance (contractAddress, account, provider, blockTag) {
 
 function getTokenDecimals (lpTokenAddress) {
   let tokenDecimals = 0
-  if (lpTokenAddress.toLowerCase() === '0x2e17b8193566345a2Dd467183526dEdc42d2d5A8'.toLowerCase()) {
+  if (
+    lpTokenAddress.toLowerCase() === '0x2e17b8193566345a2Dd467183526dEdc42d2d5A8'.toLowerCase() || // usdc
+    lpTokenAddress.toLowerCase() === '0x3c0FFAca566fCcfD9Cc95139FEF6CBA143795963'.toLowerCase() // saddle
+  ) {
     tokenDecimals = 6
   }
-  if (lpTokenAddress.toLowerCase() === '0xF753A50fc755c6622BBCAa0f59F0522f264F006e'.toLowerCase()) {
+  if (
+    lpTokenAddress.toLowerCase() === '0xF753A50fc755c6622BBCAa0f59F0522f264F006e'.toLowerCase() || // usdt
+    lpTokenAddress.toLowerCase() === '0xeC4B41Af04cF917b54AEb6Df58c0f8D78895b5Ef'.toLowerCase() // saddle
+  ) {
     tokenDecimals = 6
   }
-  if (lpTokenAddress.toLowerCase() === '0x22D63A26c730d49e5Eab461E4f5De1D8BdF89C92'.toLowerCase()) {
+  if (
+    lpTokenAddress.toLowerCase() === '0x22D63A26c730d49e5Eab461E4f5De1D8BdF89C92'.toLowerCase() || // dai
+    lpTokenAddress.toLowerCase() === '0xF181eD90D6CfaC84B8073FdEA6D34Aa744B41810'.toLowerCase() // saddle
+  ) {
     tokenDecimals = 18
   }
-  if (lpTokenAddress.toLowerCase() === '0x5C2048094bAaDe483D0b1DA85c3Da6200A88a849'.toLowerCase()) {
+  if (
+    lpTokenAddress.toLowerCase() === '0x5C2048094bAaDe483D0b1DA85c3Da6200A88a849'.toLowerCase() || // eth
+    lpTokenAddress.toLowerCase() === '0xaa30D6bba6285d0585722e2440Ff89E23EF68864'.toLowerCase() // saddle
+  ) {
     tokenDecimals = 18
   }
 
@@ -87,19 +99,27 @@ function getIsEth (lpTokenAddress) {
   return isEth
 }
 
-async function calculateAmountFromLp(swapContract, account, lpAmount, blockTag) {
+async function calculateAmountFromLp (swapContract, account, lpAmount, blockTag) {
   try {
     const amountResult = await swapContract.calculateRemoveLiquidityOneToken(account, lpAmount, 0, { blockTag })
-    return amountResult
+
+    const tokenDecimals = getTokenDecimals(swapContract.address)
+    const lpFeeBN = utils.parseUnits('4', tokenDecimals)
+    const lpFeeAmount = amountResult
+      .mul(lpFeeBN)
+      .div(utils.parseUnits('1', tokenDecimals))
+      .div(10000)
+
+    return amountResult.add(lpFeeAmount)
   } catch (err) {
-    console.log('error', account, lpAmount.toString(), blockTag)
+    console.log('error', err, account, lpAmount.toString(), blockTag)
     console.trace()
     throw err
   }
 
   /*
   const virtualPrice = await swapContract.getVirtualPrice({ blockTag })
-  const amountResult = lpAmount.mul(virtualPrice)
+  const amountResult = lpAmount.mul(virtualPrice).div(utils.parseEther('1'))
   return amountResult
   */
 }
@@ -630,7 +650,7 @@ async function runMapping (account, rpcUrl, startTimestamp = 0, endTimestamp = M
     })
   }
 
-  let filtered = logs.filter((x) => {
+  const filtered = logs.filter((x) => {
     console.log(x.blockTimestamp)
     return x.blockTimestamp >= startTimestamp && x.blockTimestamp <= endTimestamp
   })
